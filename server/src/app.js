@@ -17,6 +17,12 @@ app.use(express.urlencoded());
 app.use(express.static("public"))
 
 
+//import router
+import healthRouter from "./router/healthcheck.router.js";
+
+app.use("/api/v1/health",healthRouter)
+
+
 
 
 
