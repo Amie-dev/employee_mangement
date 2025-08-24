@@ -16,7 +16,7 @@ const validator = (req, res, next) => {
 
   // Optional: log errors for debugging
   if (process.env.NODE_ENV !== 'production') {
-    console.error("Validation errors:", extractedErrors);
+    // console.error("Validation errors:", extractedErrors);
   }
 
 //   console.log(extractedErrors);
