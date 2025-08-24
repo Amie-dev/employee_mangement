@@ -2,6 +2,7 @@ import mongoose, { Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto'
+import { type } from 'os';
 
 const userSchema = new Schema(
   {
@@ -10,13 +11,13 @@ const userSchema = new Schema(
       required: true,
       trim: true,
     },
-    avater: {
-      typ: {
+    avatar: {
+      type: {
         url: String,
         localPath: String,
         public_id: String,
       },
-      required: true,
+      // required: true,
     },
     username: {
       type: String,

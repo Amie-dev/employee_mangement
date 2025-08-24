@@ -2,35 +2,46 @@ import { body } from 'express-validator';
 
 const userRegisterValidator = () => {
   return [
-    body('fullName').isEmpty().withMessage('Full Name Not Empty'),
-
+    body('fullName')
+      .notEmpty()
+      .withMessage('Full name is required'),
+      
     body('email')
-      .isEmpty()
-      .withMessage('Email Field Not be Empty')
+      .notEmpty()
+      .withMessage('Email is required')
       .isEmail()
-      .withMessage('Must be Full Proper Email Formate'),
+      .withMessage('Please enter a valid email address'),
 
     body('password')
-      .isEmpty()
-      .withMessage('PassWord Must be field')
+      .notEmpty()
+      .withMessage('Password is required')
       .isLength({ min: 6 })
-      .withMessage('atleast have  char '),
+      .withMessage('Password must be at least 6 characters long'),
 
-    body('username').isEmpty().withMessage('username Field Not be Empty'),
+    body('username')
+      .notEmpty()
+      .withMessage('Username is required'),
   ];
 };
 
 const userLoginValidator = () => {
   return [
-    body('username').optional().withMessage('username or email is required'),
-    body('email').optional().withMessage('username or email is required'),
+    body('username')
+      .optional()
+      .isString()
+      .withMessage('Username must be a string'),
+
+    body('email')
+      .optional()
+      .isEmail()
+      .withMessage('Please enter a valid email address'),
 
     body('password')
-      .isEmpty()
-      .withMessage('PassWord Must be field')
+      .notEmpty()
+      .withMessage('Password is required')
       .isLength({ min: 6 })
-      .withMessage('atleast have  char '),
+      .withMessage('Password must be at least 6 characters long'),
   ];
 };
 
-export { userRegisterValidator ,userLoginValidator };
+export { userRegisterValidator, userLoginValidator };
