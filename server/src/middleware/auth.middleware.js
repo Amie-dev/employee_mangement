@@ -3,7 +3,7 @@ import ApiError from "../utils/ApiError.js";
 import asyncHAndler from "../utils/asyncHandler.js";
 import jwt from 'jsonwebtoken'
 
-export const verifyJWT=asyncHAndler(async(req,resizeBy,next)=>{
+export const verifyJWT=asyncHAndler(async(req,res,next)=>{
     try {
         const token=req.cookies?.accessToken ||
       req.headers.authorization?.replace("Bearer ", "");
@@ -19,9 +19,11 @@ export const verifyJWT=asyncHAndler(async(req,resizeBy,next)=>{
     if (!user) {
       throw new ApiError(401, "Invalid Access Token");
     }
+    req.user=user;
+    next()
     } catch (error) {
         throw new ApiError(401, error?.message || "Invalid access token");
-        console.log(error);
+        // console.log(error);
         
     }
 })

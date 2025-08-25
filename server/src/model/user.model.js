@@ -90,7 +90,9 @@ userSchema.methods.generateAccessToken=async function () {
 userSchema.methods.generateRefreshToken=async function () {
   return jwt.sign(
     {
-      _id:this._id
+      _id:this._id,
+      username:this.username,
+      fullName:this.fullName
     },
     process.env.REFRESH_TOKEN_SECRET,
     {
