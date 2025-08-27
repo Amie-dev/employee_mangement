@@ -17,6 +17,10 @@ const projectMemberSchema = new Schema(
       enum: AvailableUserRole,
       default: userRoleEnum.MEMBER,
     },
+    joinedAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
   {
     timestamps: true,
