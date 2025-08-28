@@ -6,7 +6,7 @@ import { createNote, deleteNote, getNoteById, getNotes, updateNote } from "../co
 const router=Router();
 
 
-router.route("/note/:projectId")
+router.route("/:projectId/note")
 .get(requireRole(AvailableUserRole),getNotes)
 .post(requireRole(AvailableUserRole),createNote)
 

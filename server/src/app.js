@@ -22,11 +22,13 @@ import healthRouter from "./router/healthcheck.router.js";
 import userRouter from './router/user.router.js'
 import projectRouter from "./router/project.router.js"
 import noteRouter from "./router/note.router.js"
+import taskRouter from './router/task.route.js'
 
 app.use("/api/v1/health",healthRouter)
 app.use("/api/v1/user",userRouter)
 app.use("/api/v1/project",projectRouter)
 app.use("/api/v1/project",noteRouter)
+app.use("/api/v1/task",taskRouter)
 
 
 
