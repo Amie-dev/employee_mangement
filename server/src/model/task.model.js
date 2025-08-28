@@ -10,7 +10,6 @@ const taskSchema = new Schema(
     },
     descriptions: {
       type: String,
-
       trim: true,
     },
     project: {
@@ -18,12 +17,12 @@ const taskSchema = new Schema(
       ref: 'Project',
       required: true,
     },
-    assigendTo: {
+    assignedTo: {
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
     },
-    assigendBy: {
+    assignedBy: {
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,
