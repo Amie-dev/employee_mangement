@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   createTask,
   deleteTask,
+  getMemberAllTask,
   getTaskById,
   getTasks,
   updateTask,
@@ -16,7 +17,7 @@ router
   .route('/p/:projectId')
   .get(requireRole(AvailableUserRole), getTasks)
   .post(requireRole([userRoleEnum.PROJECT_ADMIN, userRoleEnum.ADMIN]), createTask);
-
+router.get("/assigned-task/:projectId/",requireRole(AvailableUserRole),getMemberAllTask)
 router
   .route('/:taskId/p/:projectId')
   .get(requireRole(AvailableUserRole), getTaskById)
