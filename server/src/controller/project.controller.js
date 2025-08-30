@@ -182,27 +182,7 @@ const getProjectMember = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, members, 'Project members retrieved successfully'));
 });
 
-// const updateProjectMember = asyncHandler(async (req, res) => {
-//   const { projectId, memberId } = req.params;
-//   const { role } = req.body || {};
-//   // Validate IDs
-//   if (!mongoose.Types.ObjectId.isValid(projectId) || !mongoose.Types.ObjectId.isValid(memberId)) {
-//     throw new ApiError(400, 'Invalid project or member ID');
-//   }
 
-//   // Find and update
-//   const updatedMember = await ProjectMember.findOneAndUpdate(
-//     { _id: memberId, project: projectId },
-//     { $set: { role } },
-//     { new: true }
-//   ).populate('user', 'username email');
-
-//   if (!updatedMember) {
-//     throw new ApiError(404, 'Project member not found');
-//   }
-
-//   res.status(200).json(new ApiResponse(200, updatedMember, 'Project member updated successfully'));
-// });
 const updateProjectMember = asyncHandler(async (req, res) => {
   const { projectId, memberId } = req.params;
   const { role } = req.body || {};
