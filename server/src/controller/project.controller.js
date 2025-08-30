@@ -7,6 +7,7 @@ import { ProjectMember } from '../model/projectmember.model.js';
 import { User } from '../model/user.model.js';
 import { userRoleEnum } from '../utils/constent.js';
 import { ProjectNote } from '../model/note.model.js';
+import { Task } from '../model/task.model.js';
 
 const createProject = asyncHandler(async (req, res) => {
   const { name, descriptions } = req.body;
@@ -67,6 +68,10 @@ const deleteProject = asyncHandler(async (req, res) => {
 
   //Delete all notes linked to this project
   await ProjectNote.deleteMany({ project: projectId })
+
+  //Delete all Task linked to this project
+
+  await Task.deleteMany({ project: projectId })
 
   return res.status(200).json(new ApiResponse(200, {}, 'Project deleted successfully'));
 });
