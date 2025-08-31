@@ -7,6 +7,8 @@ import jwt from 'jsonwebtoken';
 import { deleteFromCloudinary, uploadOnCloudinary } from '../utils/cloudinary.js';
 import { ProjectMember } from '../model/projectmember.model.js';
 import mongoose from 'mongoose';
+import crypto from 'crypto';
+import { emailVerificationMailgenContent, sendMail } from '../utils/mail.js';
 
 const options = {
   httpOnly: true,
@@ -32,10 +34,11 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'All Filed Are Required');
   }
   const normalizedUsername = username.toLowerCase();
-  const avatarLocalPath = req.files?.avatar?.[0]?.path;
+  const avatarLocalPath = req.file.path;
   const existedUser = await User.findOne({
     $or: [{ email }, { username: normalizedUsername }],
   });
+  // console.log(req.file);
 
   if (existedUser) {
     if (avatarLocalPath) {
@@ -63,14 +66,38 @@ const registerUser = asyncHandler(async (req, res) => {
         public_id: avatar.public_id,
       };
     }
+
+    const { unHashToken, hashToken, tokenExpiry } = await user.generateTemporaryToken();
+    user.emailVerifiedToken = hashToken;
+    user.emailVerifiedExpiry = tokenExpiry;
+
     await user.save({ validateBeforeSave: false });
+
+    const URL = `http://localhost:${process.env.PORT}/api/v1/user/email-verification?token=${unHashToken}`;
+    const mailgenContent = await emailVerificationMailgenContent(user.username, URL);
+
+    const result = await sendMail({
+      email: user.email,
+      subject: 'Email Verifactions',
+      mailgenContent,
+    });
+
+    if (result.success) {
+      console.log('Verifications email sent!');
+      // res.status(200).json(new ApiResponse(200, result, 'Email Verifications   mail sent!'));
+    } else {
+      console.error('Failed to send email:', result.error);
+    }
+
     // Prepare sanitized response
     const sanitizedUser = {
       _id: user._id,
       username: user.username,
       fullName: user.fullName,
       email: user.email,
-      avatar: avatar,
+      avatar: {
+        url: user.avatar.url,
+      },
     };
     console.log('User created successfully');
 
@@ -194,6 +221,58 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, {}, 'Password changed successfully'));
 });
 
+const updatedUser = asyncHandler(async (req, res) => {
+  const { fullName, username } = req.body || {};
+  const avatarLocalPath = req.file?.path;
+
+  const user = await User.findById(req.user?._id);
+  if (!user) {
+    throw new ApiError(404, 'User not found');
+  }
+
+  user.fullName = fullName || user.fullName;
+  user.username = username || user.username;
+  // console.log(avatarLocalPath);
+
+  let avatar;
+  try {
+    if (avatarLocalPath) {
+      avatar = await uploadOnCloudinary(avatarLocalPath);
+      // console.log(avatar);
+
+      if (avatar) {
+        // console.log("hhhh");
+
+        user.avatar = {
+          url: avatar.url,
+          public_id: avatar.public_id,
+        };
+      }
+    }
+
+    await user.save({ validateBeforeSave: false });
+
+    res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          fullName: user.fullName,
+          username: user.username,
+          avatar: {
+            url: user.avatar.url,
+          },
+        },
+        'User updated successfully'
+      )
+    );
+  } catch (error) {
+    if (avatar) {
+      await deleteFromCloudinary(avatar.public_id);
+    }
+    throw new ApiError(500, 'Failed to update user');
+  }
+});
+
 const getCurrentUser = asyncHandler(async (req, res) => {
   if (!req.user || !req.user._id) {
     throw new ApiError(401, 'User not authenticated');
@@ -249,8 +328,11 @@ const getCurrentUser = asyncHandler(async (req, res) => {
           email: '$userDetails.email',
           fullName: '$userDetails.fullName',
           isEmailVerified: '$userDetails.isEmailVerified',
-          avatar:'$userDetails.avatar.url',
+          avatar: '$userDetails.avatar.url',
           createdAt: '$userDetails.createdAt',
+          avatar: {
+            url: '$userDetails.avatar.url',
+          },
         },
         project: {
           projectName: '$projectDetails.name',
@@ -265,11 +347,138 @@ const getCurrentUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, sanitizedUser[0] || req.user, 'User fetched successfully'));
 });
 
+const emailVerificationsRequest = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
+  if (!userId) {
+    throw new ApiError(404, 'User is not Authonticatied');
+  }
+  const user = await User.findById(userId);
+  const { unHashToken, hashToken, tokenExpiry } = await user.generateTemporaryToken();
+
+  user.emailVerifiedToken = hashToken;
+  user.emailVerifiedExpiry = tokenExpiry;
+  await user.save({ validateBeforeSave: false });
+  const URL = `http://localhost:${process.env.PORT}/api/v1/user/email-verification?token=${unHashToken}`;
+  const mailgenContent = await emailVerificationMailgenContent(user.username, URL);
+  const result = await sendMail({
+    email: user.email,
+    subject: 'Email Verifactions',
+    mailgenContent,
+  });
+
+  if (result.success) {
+    console.log('Verifications email sent!');
+    res.status(200).json(new ApiResponse(200, result, 'Email Verifications   mail sent!'));
+  } else {
+    console.error('Failed to send email:', result.error);
+  }
+});
+
+const emailVerificationsVerified = asyncHandler(async (req, res) => {
+  const { token } = req.query;
+  if (!token) throw new ApiError(400, 'Token is required');
+  const hashToken = crypto.createHash('sha256').update(token).digest('hex');
+
+  const user = await User.findOne({
+    emailVerifiedToken: hashToken,
+    emailVerifiedExpiry: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    throw new ApiError(404, 'Invalid or expired token');
+  }
+
+  user.isEmailVerified = true;
+  user.emailVerifiedToken = undefined;
+  user.emailVerifiedExpiry = undefined;
+  await user.save({ validateBeforeSave: false });
+
+  res.status(200).json(new ApiResponse(200, {}, 'Verifed Your email'));
+});
+
+const forgotPasswordRequest = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({
+    email: email,
+  });
+  if (!user) {
+    throw new ApiError(404, 'This email user is not exist');
+  }
+  const { unHashToken, hashToken, tokenExpiry } = await user.generateTemporaryToken();
+
+  user.forgotPasswordToken = hashToken;
+  user.forgotPasswordExpiry = tokenExpiry;
+  await user.save({ validateBeforeSave: false });
+
+  const resetURL = `http://localhost:${process.env.PORT}/api/v1/user/forgot-password?token=${unHashToken}`;
+  const mailgenContent = await emailVerificationMailgenContent(user.username, resetURL);
+
+  const result = await sendMail({
+    email: user.email,
+    subject: 'Reset Your Password',
+    mailgenContent,
+  });
+
+  if (result.success) {
+    console.log('Reset Password  email sent!');
+    res.status(200).json(new ApiResponse(200, result, 'Reset Password  email sent!'));
+  } else {
+    console.error('Failed to send email:', result.error);
+  }
+});
+
+const verifyForgotPassword = asyncHandler(async (req, res) => {
+  const { token } = req.query;
+  const { newPassword, confirmedPassword } = req.body || {};
+
+  if (!token) throw new ApiError(400, 'Token is required');
+
+  if (!newPassword || !confirmedPassword) {
+    throw new ApiError(400, 'Both new and confirm password are required');
+  }
+  if (newPassword !== confirmedPassword) {
+    throw new ApiError(401, 'New password and confirm password must match');
+  }
+
+  const hashToken = crypto.createHash('sha256').update(token).digest('hex');
+
+  const user = await User.findOne({
+    forgotPasswordToken: hashToken,
+    forgotPasswordExpiry: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    throw new ApiError(404, 'Invalid or expired token');
+  }
+
+  user.forgotPasswordToken = undefined;
+  user.forgotPasswordExpiry = undefined;
+  user.password = newPassword;
+
+  await user.save({ validateBeforeSave: false });
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        username: user.username,
+        email: user.email,
+      },
+      'Password reset successful'
+    )
+  );
+});
+
 export {
   registerUser,
   logInUser,
   logOutUser,
   refreshAccessToken,
+  updatedUser,
   changeCurrentPassword,
   getCurrentUser,
+  forgotPasswordRequest,
+  verifyForgotPassword,
+  emailVerificationsRequest,
+  emailVerificationsVerified,
 };
